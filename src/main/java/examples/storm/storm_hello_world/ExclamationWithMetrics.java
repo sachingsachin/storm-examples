@@ -6,6 +6,11 @@ import backtype.storm.StormSubmitter;
 import backtype.storm.generated.AlreadyAliveException;
 import backtype.storm.generated.AuthorizationException;
 import backtype.storm.generated.InvalidTopologyException;
+import backtype.storm.metric.LoggingMetricsConsumer;
+import backtype.storm.metric.api.CountMetric;
+import backtype.storm.metric.api.MeanReducer;
+import backtype.storm.metric.api.MultiCountMetric;
+import backtype.storm.metric.api.ReducedMetric;
 import backtype.storm.task.OutputCollector;
 import backtype.storm.task.TopologyContext;
 import backtype.storm.testing.TestWordSpout;
@@ -32,21 +37,45 @@ import java.util.Map;
  * ExclamationBolt is a very simple bolt that just adds some exclamation marks to its input.
  * </pre>
  */
-public class HelloWorld
+public class ExclamationWithMetrics
 {
 	@SuppressWarnings("serial")
 	public static class ExclamationBolt extends BaseRichBolt
 	{
-		OutputCollector _collector;
+		private OutputCollector _collector;
+		private CountMetric _countMetric;
+		private MultiCountMetric _wordCountMetric;
+		private ReducedMetric _wordLengthMeanMetric;
 		
 		public void prepare(Map stormConf, TopologyContext context, OutputCollector collector)
 		{
 			_collector = collector;
+			initMetrics(context);
+		}
+
+		/* Step 1: Initialize metrics and register with storm */
+		void initMetrics(TopologyContext context)
+		{
+			_countMetric = new CountMetric();
+			_wordCountMetric = new MultiCountMetric();
+			_wordLengthMeanMetric = new ReducedMetric(new MeanReducer());
+			context.registerMetric("execute_count", _countMetric, 1);
+			context.registerMetric("word_count", _wordCountMetric, 1);
+			context.registerMetric("word_length", _wordLengthMeanMetric, 1);
 		}
 
 		public void execute(Tuple tuple) {
 			_collector.emit(tuple, new Values(tuple.getString(0) + "!!!"));
 			_collector.ack(tuple);
+			updateMetrics(tuple.getString(0));
+		}
+
+		/* Step 2: Update counts in the metrics-objects for each emission of the tuple. */
+		void updateMetrics(String word)
+		{
+			_countMetric.incr();
+			_wordCountMetric.scope(word).incr();
+			_wordLengthMeanMetric.update(word.length());
 		}
 
 		public void declareOutputFields(OutputFieldsDeclarer declarer)
@@ -70,6 +99,11 @@ public class HelloWorld
 
         Config conf = new Config();
         conf.setDebug(true);
+
+        /* Step 3: Put in a consumer for our metrics.
+         * LoggingMetricsConsumer will show up as a Bolt in the Storm web UI and it will also
+         * add to the file "logs/metrics.log" along with writing to INFO logs on the console */
+        conf.registerMetricsConsumer(LoggingMetricsConsumer.class, 2);
 
         if (args != null && args.length > 0)
         {
