@@ -20,11 +20,21 @@ import backtype.storm.utils.Utils;
 import java.util.Map;
 
 /**
- * Hello world!
+ * <pre>
+ * Creates a storm topology that looks like this:
+ *   "word" ---> "exclaim1" ---> "exclaim2"
+ * where:
+ *    "word" is a spout of type TestWordSpout
+ *    "exclaim1" is a bolt of type ExclamationBolt
+ *    "exclaim2" is another bolt of the same type ExclamationBolt
  *
+ * TestWordSpout emits a random word from a static collection of words.
+ * ExclamationBolt is a very simple bolt that just adds some exclamation marks to its input.
+ * </pre>
  */
-public class HellowWorld 
+public class HelloWorld 
 {
+	@SuppressWarnings("serial")
 	public static class ExclamationBolt extends BaseRichBolt
 	{
 		OutputCollector _collector;
@@ -49,7 +59,12 @@ public class HellowWorld
     {
     	TopologyBuilder builder = new TopologyBuilder();
 
-        builder.setSpout("word", new TestWordSpout(), 10);
+    	// TestWordSpout emits a random word from a static collection of words.
+    	//
+    	// For every setSpout() / setBolt() methods, there is an integer argument
+    	// called 'parallelism_hint' which denotes the number of tasks that 'should' be assigned to
+    	// execute this spout. Each task will run on a thread in a process somewhere around the cluster.
+        builder.setSpout("word", new TestWordSpout(), 1);
         builder.setBolt("exclaim1", new ExclamationBolt(), 3).shuffleGrouping("word");
         builder.setBolt("exclaim2", new ExclamationBolt(), 2).shuffleGrouping("exclaim1");
 
@@ -59,7 +74,6 @@ public class HellowWorld
         if (args != null && args.length > 0)
         {
           conf.setNumWorkers(3);
-
           StormSubmitter.submitTopologyWithProgressBar(args[0], conf, builder.createTopology());
         }
         else
