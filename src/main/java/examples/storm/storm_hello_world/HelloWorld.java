@@ -74,15 +74,18 @@ public class HelloWorld
         if (args != null && args.length > 0)
         {
           conf.setNumWorkers(3);
+          System.out.println("------------ Not using local-cluster ------------");
           StormSubmitter.submitTopologyWithProgressBar(args[0], conf, builder.createTopology());
         }
         else
         {
-          LocalCluster cluster = new LocalCluster();
-          cluster.submitTopology("test", conf, builder.createTopology());
-          Utils.sleep(10000);
-          cluster.killTopology("test");
-          cluster.shutdown();
+            System.out.println("------------ Using local-cluster ------------");
+            LocalCluster cluster = new LocalCluster();
+            cluster.submitTopology("test", conf, builder.createTopology());
+            Utils.sleep(10000);
+            System.out.println("------------ Killing topology test  ------------");
+            cluster.killTopology("test");
+            cluster.shutdown();
         }
     }
 }

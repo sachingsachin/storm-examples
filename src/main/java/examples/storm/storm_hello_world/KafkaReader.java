@@ -66,19 +66,19 @@ public class KafkaReader
 
 	public static void main(String[] args) throws AlreadyAliveException, InvalidTopologyException, AuthorizationException
     {
-		if (args == null || args.length != 4)
+		if (args == null || args.length != 3)
 		{
 			System.err.println ("Wrong args. \n" +
 					"Usage: bin/storm jar [path-to-jar] \n" + 
-					"examples.storm.storm_hello_world.KafkaReader] \n" +
+					"examples.storm.storm_hello_world.KafkaReader \n" +
 					"[ZK-Connection-String] \n" +
 					"[Kafka-Topic-Name] \n" +
-					"[ZK-Root]");
+					"[ZK-Root-For-Consumer-Offsets]");
 			return;
 		}
-		String _zkConnString = args[1];
-		String _topicName = args[2];
-		String _zkRootForConsumerOffsets = args[3];
+		String _zkConnString = args[0];
+		String _topicName = args[1];
+		String _zkRootForConsumerOffsets = args[2];
 		
     	BrokerHosts zkHosts = new ZkHosts(_zkConnString);
     	SpoutConfig spoutConfig = new SpoutConfig(zkHosts, _topicName, _zkRootForConsumerOffsets, UUID.randomUUID().toString());
@@ -95,18 +95,10 @@ public class KafkaReader
         Config conf = new Config();
         conf.setDebug(true);
 
-        if (args != null && args.length > 0)
-        {
-          conf.setNumWorkers(3);
-          StormSubmitter.submitTopologyWithProgressBar(args[0], conf, builder.createTopology());
-        }
-        else
-        {
-          LocalCluster cluster = new LocalCluster();
-          cluster.submitTopology("test", conf, builder.createTopology());
-          Utils.sleep(10000);
-          cluster.killTopology("test");
-          cluster.shutdown();
-        }
+        LocalCluster cluster = new LocalCluster();
+        cluster.submitTopology("test", conf, builder.createTopology());
+        Utils.sleep(20000);
+        cluster.killTopology("test");
+        cluster.shutdown();
     }
 }

@@ -76,7 +76,7 @@ And we need to either put them in storm's lib/ directory or build an uber jar.
 
 But storm does complain about "multiple defaults.yaml resources" when it sees the Storm jars bundled in the topology jar file. Hence we remove it by using scope "provided" for storm-core libraries.
 
-maven-assembly-plugin might be useful too.
+maven-assembly-plugin might be usable too.
 
 
 
@@ -84,5 +84,5 @@ maven-assembly-plugin might be useful too.
 
 1. Build jar using `mvn clean package`
 2. Copy target/storm\_hello\_world-0.0.1-SNAPSHOT.jar to a convienient location.
-3. Run storm as `bin/storm jar ../\*.jar examples.storm.storm\_hello\_world.HelloWorld`
+3. Run storm as `bin/storm jar ../\*.jar examples.storm.storm\_hello\_world.[enter-class-name-to-run]`
 
