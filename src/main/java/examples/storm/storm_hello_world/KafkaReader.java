@@ -53,12 +53,49 @@ public class KafkaReader
 			_collector = collector;
 		}
 
-		public void execute(Tuple tuple) {
+		public void execute(Tuple tuple)
+		{
 			//_collector.emit(tuple, new Values(tuple.getString(0) + "!!!"));
 			_collector.ack(tuple);
-			System.out.println("Printing tuple with toString(): " + tuple.toString());
-		    System.out.println("Printing tuple with getString(): " + tuple.getString(0));
-		    logger.info("Logging tuple with logger: " + tuple.getString(0));
+			printTupleFields(tuple);
+		}
+
+		private void printTupleFields(Tuple tuple)
+		{
+			StringBuilder builder = new StringBuilder();
+			builder.append("\n--------------------------------------------------");
+			builder.append("\nMessageID: " + tuple.getMessageId());
+			builder.append("\nSourceComponent: " + tuple.getSourceComponent());
+			builder.append("\nSourceGlobalStreamID: " + tuple.getSourceGlobalStreamid());
+			builder.append("\nSourceStreamID: " + tuple.getSourceStreamId());
+
+			Fields fields = tuple.getFields();
+			builder.append("\n" + fields.size() + " fields:");
+			if (fields.size() == 1)
+			{
+				// Assume tab-separated fields in the same message
+				String msg = tuple.getString(0);
+				String [] msgFields = msg.split("\t");
+				builder.append("\n" + msgFields.length + " tab-separated fields");
+				int i=0;
+				for (String msgField : msgFields)
+				{
+					++i;
+					builder.append("\n" + i + ") " + msgField);
+				}
+			}
+			else
+			{
+				for (String field : fields)
+				{
+					Object value = tuple.getValueByField(field);
+					builder.append("\nfield = " + field + ", value = " + value);
+				}
+			}
+			builder.append("\nPrinting tuple with toString(): " + tuple.toString());
+		    builder.append("\nPrinting tuple with getString(): " + tuple.getString(0));
+		    builder.append("\n--------------------------------------------------");
+		    System.out.println(builder.toString());
 		}
 
 		public void declareOutputFields(OutputFieldsDeclarer declarer) {}
