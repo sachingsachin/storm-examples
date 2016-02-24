@@ -8,6 +8,7 @@ Each example is completely contained in a single file in **examples/storm/storm\
 1. HelloWorld.java - Basic example where a bold just adds an exclamation mark on its input word.
 2. ExclamationWithMetrics.java - Shows the usage of metrics.
 3. KafkaReader.java - Shows how to use the storm-kafka "plugin" with kafka.
+4. KafkaToElasticSearch.java - Reads from Kafka, transforms the message and writes to Elastic-Search
 
 
 ## Installing Storm
@@ -85,4 +86,20 @@ maven-assembly-plugin might be usable too.
 1. Build jar using `mvn clean package`
 2. Copy target/storm\_hello\_world-0.0.1-SNAPSHOT.jar to a convienient location.
 3. Run storm as `bin/storm jar ../\*.jar examples.storm.storm\_hello\_world.[enter-class-name-to-run]`
+
+
+
+## Elastic Search Bolt
+
+Elastic-Search Bolt has an extensive list of options that can be tuned.
+In KafkaToElasticSearch.java, an input message is parsed with a custom formatter before writing to Elastic-Search.
+
+If you see no errors on the console, check your Elastic-Search cluster to see the documents
+
+[http://localhost:9200/\_cat/indices?v](http://localhost:9200/_cat/indices?v) should show "storm" index and the number of documents in it.
+
+[http://127.0.0.1:9200/storm/\_search/?size=10&pretty=1](http://127.0.0.1:9200/storm/_search/?size=10&pretty=1) should show the documents indexed.
+
+curl -XDELETE 'http://localhost:9200/storm/' deletes the storm index.
+
 
