@@ -16,6 +16,7 @@ import backtype.storm.LocalCluster;
 import backtype.storm.generated.AlreadyAliveException;
 import backtype.storm.generated.AuthorizationException;
 import backtype.storm.generated.InvalidTopologyException;
+import backtype.storm.metric.LoggingMetricsConsumer;
 import backtype.storm.spout.SchemeAsMultiScheme;
 import backtype.storm.topology.TopologyBuilder;
 import backtype.storm.tuple.Fields;
@@ -33,10 +34,12 @@ import storm.kafka.ZkHosts;
  * Usage:
  *   bin/storm jar \
  *       [path-to-jar] \
- *       examples.storm.storm_hello_world.KafkaReader
- *       [ZK-Connection-String]
- *       [Kafka-Topic-Name]
- *       [ZK-Root-For-Consumer-Offsets]
+ *       examples.storm.storm_hello_world.KafkaToElasticSearch \
+ *       [Kafka-ZK-Connection-String] \
+ *       [Kafka-Topic-Name] \
+ *       [Kafka-ZK-Root-For-Consumer-Offsets] \
+ *       [es.nodes eg. 10.11.12.13] \
+ *       [es.port eg. 9200]
  * </pre>
  */
 public class KafkaToElasticSearch
@@ -97,23 +100,31 @@ public class KafkaToElasticSearch
 
 	public static void main(String[] args) throws AlreadyAliveException, InvalidTopologyException, AuthorizationException
     {
-		if (args == null || args.length != 3)
+		if (args == null || args.length != 5)
 		{
 			System.err.println ("Wrong args. \n" +
 					"Usage: bin/storm jar [path-to-jar] \n" + 
 					"examples.storm.storm_hello_world.KafkaReader \n" +
-					"[ZK-Connection-String] \n" +
+					"[Kafka-ZK-Connection-String] \n" +
 					"[Kafka-Topic-Name] \n" +
-					"[ZK-Root-For-Consumer-Offsets]");
+					"[Kafka-ZK-Root-For-Consumer-Offsets]\n"+
+					"[es.nodes eg. 10.11.12.13]\n"+
+					"[es.port eg 9200]\n");
 			return;
 		}
-		String _zkConnString = args[0];
-		String _topicName = args[1];
-		String _zkRootForConsumerOffsets = args[2];
+		String kafkaZkConnString = args[0];
+		String kafkaTopicName = args[1];
+		String kafkaZkRootForConsumerOffsets = args[2];
+		String esNodes = args[3];
+		String esPort = args[4];
 		
-    	BrokerHosts zkHosts = new ZkHosts(_zkConnString);
-    	SpoutConfig spoutConfig = new SpoutConfig(zkHosts, _topicName, _zkRootForConsumerOffsets, UUID.randomUUID().toString());
+    	BrokerHosts zkHosts = new ZkHosts(kafkaZkConnString);
+    	SpoutConfig spoutConfig = new SpoutConfig(zkHosts, kafkaTopicName, kafkaZkRootForConsumerOffsets, UUID.randomUUID().toString());
     	spoutConfig.scheme = new SchemeAsMultiScheme(new StringScheme());
+    	// spoutConfig.metricsTimeBucketSizeInSecs sets the interval when the inbuilt Kafka metrics runs to gather stats.
+    	// be careful while keeping this value too low as it can affect the performance a lot.
+    	// (On a local setup, saw 18k docs consumed with default value of 60 seconds and only 300 docs consumed with 5 seconds) 
+    	//spoutConfig.metricsTimeBucketSizeInSecs = 5;
     	KafkaSpout kafkaSpout = new KafkaSpout(spoutConfig);
 
     	TopologyBuilder builder = new TopologyBuilder();
@@ -162,6 +173,8 @@ public class KafkaToElasticSearch
         HashMap<String, String> esConf = new HashMap<String, String>();
         esConf.put("es.batch.size.entries", "100");
         esConf.put("es.input.json", "false");
+        esConf.put("es.nodes", esNodes);
+        esConf.put("es.port", esPort);
         // Option "es.ser.writer.value.class" is defined by the option ES_SERIALIZATION_WRITER_VALUE_CLASS in ConfigurationOptions class
         // And that is set to JdkValueWriter.class.getName() in org.elasticsearch.hadoop.integration.rest.AbstractRestQueryTest
         // Hence we too do a something similar for writing our own message to JSON
@@ -171,6 +184,10 @@ public class KafkaToElasticSearch
 
         Config conf = new Config();
         conf.setDebug(true);
+
+        /* LoggingMetricsConsumer will show up as a Bolt in the Storm web UI and it will also
+         * add to the file "logs/metrics.log" along with writing to INFO logs on the console */
+        conf.registerMetricsConsumer(LoggingMetricsConsumer.class, 2);
 
         LocalCluster cluster = new LocalCluster();
         cluster.submitTopology("test", conf, builder.createTopology());
