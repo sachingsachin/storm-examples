@@ -44,7 +44,9 @@ cp -rf storm-0.10.0.nimbus    storm-0.10.0.supervisor2
 
 ```
 
-Start nimbus in one shell
+Configure storm as described in [Setting-up-a-Storm-cluster](http://storm.apache.org/documentation/Setting-up-a-Storm-cluster.html)
+
+And then start nimbus in one shell.
 
 ```bash
 
